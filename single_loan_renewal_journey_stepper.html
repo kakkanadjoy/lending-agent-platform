@@ -1,0 +1,69 @@
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Step-by-step journey of one loan renewal through the LOS and agent platform, showing which steps are handled by the system, agents, or humans.</h2>
+<div id="journey" style="padding:4px 0">
+  <div id="dots" style="display:flex;gap:6px;align-items:center;margin-bottom:14px"></div>
+  <div class="panel" data-actor="LOS" data-color="gray">
+    <div class="ttl">1 · The tickler fires</div>
+    <div class="who"></div>
+    <p>A nightly job scans maturities and finds this line 90 days out. The LOS writes a <code>renewal.due</code> event, opens a renewal case, and sets status to <em>documents requested</em>. Nothing intelligent has happened yet — just the system of record keeping its calendar.</p>
+  </div>
+  <div class="panel" data-actor="Agent" data-color="purple">
+    <div class="ttl">2 · Intake agent works the checklist</div>
+    <div class="who"></div>
+    <p>The event wakes the intake agent. It builds the document checklist (new fiscal-year statements, updated debt schedule, guarantor PFS), drafts the request email for the RM, and as PDFs arrive it classifies each one, ticks the list, and flags gaps. Writes back: document statuses, checklist progress.</p>
+  </div>
+  <div class="panel" data-actor="Agent" data-color="purple">
+    <div class="ttl">3 · Spreading agent extracts and maps</div>
+    <div class="who"></div>
+    <p>Documents complete → <code>docs.complete</code> event → spreading agent extracts the financials, maps them to the standard spread, computes draft DSCR, leverage, and global cash flow — each number carrying a confidence score and a source-page reference. Then it stops, on purpose.</p>
+  </div>
+  <div class="panel" data-actor="Human" data-color="teal">
+    <div class="ttl">4 · Underwriter gate — the interrupt</div>
+    <div class="who"></div>
+    <p>The LangGraph run pauses and checkpoints. The underwriter sees the draft spread beside the source pages, corrects two mappings, approves. The run resumes with corrections in state. The spread of record is now <em>human-approved</em> — nothing downstream consumed it before this moment.</p>
+  </div>
+  <div class="panel" data-actor="Services" data-color="teal">
+    <div class="ttl">5 · Rules, compliance branch, and the EWS score</div>
+    <div class="who"></div>
+    <p>The deterministic layer runs: rules engine tests policy (DSCR slipped to 1.15x vs the 1.20x minimum → waivable exception, citation §4.3.1); the compliance sub-workflow routes it to credit-manager authority; XGBoost scores deterioration risk at 0.71 — this renewal jumps the queue.</p>
+  </div>
+  <div class="panel" data-actor="Agent" data-color="purple">
+    <div class="ttl">6 · Renewal agent drafts the review</div>
+    <div class="who"></div>
+    <p>With verified facts, exceptions, last year's review (retrieved via RAG), and the EWS reasons, the agent drafts the annual review: deltas narrated, covenant status, the exception narrative with its citation, proposed terms. Facts-only contract; the recommendation field is left for a human.</p>
+  </div>
+  <div class="panel" data-actor="Human" data-color="teal">
+    <div class="ttl">7 · Approver gate, then the LOS closes the loop</div>
+    <div class="who"></div>
+    <p>Second interrupt: the credit manager reads the draft, signs the DSCR waiver, approves renewal at reduced limit. The decision, signature, and full audit trail write back to the LOS; status flips to <em>renewed</em>; monitoring resumes with next year's tickler already scheduled. ↻</p>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button id="prev" style="font:inherit;padding:6px 14px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);border-radius:var(--border-radius-md);cursor:pointer">Back</button>
+    <button id="next" style="font:inherit;padding:6px 14px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);border-radius:var(--border-radius-md);cursor:pointer">Next step</button>
+  </div>
+</div>
+<style>
+#journey .panel{border:1px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px;margin-bottom:10px}
+#journey .ttl{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+#journey .who{font-size:12px;margin-bottom:6px}
+#journey p{font-size:14px;line-height:1.6;color:var(--color-text-secondary);margin:0}
+#journey code{font-family:var(--font-mono);font-size:12px}
+</style>
+<script>
+(function(){
+  const colors={gray:{bg:'#F1EFE8',fg:'#444441',dbg:'#444441',dfg:'#D3D1C7'},purple:{bg:'#EEEDFE',fg:'#3C3489',dbg:'#3C3489',dfg:'#CECBF6'},teal:{bg:'#E1F5EE',fg:'#085041',dbg:'#085041',dfg:'#9FE1CB'}};
+  const dark=matchMedia('(prefers-color-scheme: dark)').matches;
+  const panels=[...document.querySelectorAll('#journey .panel')];
+  panels.forEach(p=>{
+    const c=colors[p.dataset.color], w=p.querySelector('.who');
+    const bg=dark?c.dbg:c.bg, fg=dark?c.dfg:c.fg;
+    w.innerHTML='<span style="background:'+bg+';color:'+fg+';padding:2px 10px;border-radius:999px;font-weight:500">'+p.dataset.actor+'</span>';
+  });
+  const dots=document.getElementById('dots');
+  panels.forEach((_,i)=>{const d=document.createElement('span');d.style.cssText='width:8px;height:8px;border-radius:50%;background:var(--color-border-secondary);cursor:pointer';d.onclick=()=>show(i);dots.appendChild(d);});
+  let cur=0;
+  function show(i){cur=i;panels.forEach((p,j)=>p.style.display=j===i?'block':'none');[...dots.children].forEach((d,j)=>d.style.background=j===i?'var(--color-text-primary)':'var(--color-border-secondary)');}
+  document.getElementById('prev').onclick=()=>show((cur-1+panels.length)%panels.length);
+  document.getElementById('next').onclick=()=>show((cur+1)%panels.length);
+  show(0);
+})();
+</script>
