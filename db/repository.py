@@ -104,3 +104,51 @@ def get_loan(conn: psycopg.Connection, loan_id: str) -> dict[str, Any] | None:
     with conn.cursor() as cur:
         cur.execute("SELECT * FROM loans WHERE loan_id = %s", (loan_id,))
         return cur.fetchone()
+
+
+def upsert_loan_financials(conn: psycopg.Connection, loan_id: str, *,
+                          dscr: float | None = None, dscr_prior: float | None = None,
+                          leverage: float | None = None, utilization: float | None = None,
+                          ground_truth: dict | None = None) -> None:
+    """Attach headline financials and the planted ground truth to a loan.
+    Separate from create_loan so the core insert stays simple."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE loans SET dscr=%s, dscr_prior=%s, leverage=%s, utilization=%s, "
+            "ground_truth=%s WHERE loan_id=%s",
+            (dscr, dscr_prior, leverage, utilization,
+             psycopg.types.json.Jsonb(ground_truth or {}), loan_id),
+        )
+
+
+def create_document(conn: psycopg.Connection, document_id: str, loan_id: str,
+                   cycle: str, doc_type: str, *, fiscal_year: int | None = None,
+                   status: str = "requested") -> str:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO documents (document_id, loan_id, cycle, doc_type, "
+            "fiscal_year, status) VALUES (%s, %s, %s, %s, %s, %s) "
+            "RETURNING document_id",
+            (document_id, loan_id, cycle, doc_type, fiscal_year, status),
+        )
+        return cur.fetchone()["document_id"]
+
+
+def count_loans(conn: psycopg.Connection) -> int:
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) AS n FROM loans")
+        return cur.fetchone()["n"]
+
+
+def loans_maturing_within(conn: psycopg.Connection, days: int) -> list[dict[str, Any]]:
+    """Revolvers whose maturity falls within `days` of today — the tickler's
+    future query, useful now for verifying the maturity spread."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT loan_id, maturity_date FROM loans "
+            "WHERE facility_type = 'revolving_line' AND maturity_date IS NOT NULL "
+            "AND maturity_date <= (CURRENT_DATE + make_interval(days => %s)) "
+            "ORDER BY maturity_date",
+            (days,),
+        )
+        return cur.fetchall()

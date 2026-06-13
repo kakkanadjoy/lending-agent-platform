@@ -32,6 +32,16 @@ CREATE TABLE IF NOT EXISTS loans (
     status          TEXT NOT NULL DEFAULT 'active',    -- active | renewal_in_progress | renewed | review_in_progress | reviewed | declined
     risk_rating     INTEGER,                      -- 1..10 grade; human/scorecard owned, never LLM
     interest_rate   NUMERIC(6,4),
+    -- Headline financials carried on the loan for Phase 0/1 (rules + EWS).
+    -- Full statement line-items come later, when the spreading agent needs them.
+    dscr            NUMERIC(6,3),                 -- debt service coverage (current cycle)
+    dscr_prior      NUMERIC(6,3),                 -- prior cycle, for year-over-year delta (EWS)
+    leverage        NUMERIC(6,3),                 -- debt / EBITDA
+    utilization     NUMERIC(5,4),                 -- revolver: drawn / commitment
+    -- Ground truth, planted at generation, the answer key for everything
+    -- downstream (rules verdicts, EWS labels). JSONB so it can hold flags,
+    -- expected exception codes, and the deterioration label together.
+    ground_truth    JSONB NOT NULL DEFAULT '{}',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
