@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS loans (
     dscr_prior      NUMERIC(6,3),                 -- prior cycle, for year-over-year delta (EWS)
     leverage        NUMERIC(6,3),                 -- debt / EBITDA
     utilization     NUMERIC(5,4),                 -- revolver: drawn / commitment
+    income_discrepancy_pct NUMERIC(5,4),           -- |stated - documented| / documented; misrep check
     -- Ground truth, planted at generation, the answer key for everything
     -- downstream (rules verdicts, EWS labels). JSONB so it can hold flags,
     -- expected exception codes, and the deterioration label together.

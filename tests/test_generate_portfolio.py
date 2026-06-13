@@ -47,21 +47,27 @@ def test_planted_truth_matches_data():
 
 def test_bulk_expected_exceptions_are_self_consistent():
     """For every bulk loan, the recorded expected_exceptions must match what
-    its own numbers imply — the answer key must not lie."""
+    its own numbers imply. Uses the same thresholds the generator does, so it
+    stays in step as rules are added."""
     gen.generate(bulk=60, seed=7)
     with repo.connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT loan_id, dscr, leverage, ground_truth FROM loans "
+            cur.execute("SELECT loan_id, dscr, leverage, utilization, "
+                        "income_discrepancy_pct, ground_truth FROM loans "
                         "WHERE ground_truth->>'profile' = 'bulk'")
             rows = cur.fetchall()
     assert rows
     for r in rows:
         expected = set(r["ground_truth"]["expected_exceptions"])
         implied = set()
-        if float(r["dscr"]) < 1.20:
+        if float(r["dscr"]) < gen.DSCR_MIN:
             implied.add("DSCR-MIN")
-        if float(r["leverage"]) > 4.0:
+        if float(r["leverage"]) > gen.LEVERAGE_MAX:
             implied.add("LEVERAGE-MAX")
+        if r["utilization"] is not None and float(r["utilization"]) > gen.UTILIZATION_MAX:
+            implied.add("UTILIZATION-HIGH")
+        if r["income_discrepancy_pct"] is not None and float(r["income_discrepancy_pct"]) > gen.INCOME_DISCREPANCY_COMPLIANCE:
+            implied.add("INCOME-MISREP")
         assert expected == implied, f"{r['loan_id']}: {expected} != {implied}"
 
 

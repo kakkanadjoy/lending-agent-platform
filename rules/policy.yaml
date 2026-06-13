@@ -1,0 +1,84 @@
+# Commercial credit policy — the single source of truth.
+#
+# This file is read three ways, and that's the whole point of keeping it as
+# data rather than code:
+#   1. the rules engine evaluates loans against it at runtime;
+#   2. the RAG corpus is generated from the `policy_text` fields, so every
+#      verdict can cite the exact section a human would read;
+#   3. the synthetic generator uses the same thresholds to plant ground truth.
+# Change a threshold here and all three move together.
+#
+# A rule fires when the loan's `field` compared against `threshold` via
+# `operator` is true. `waiver_authority` says who may sign off an exception;
+# `unwaivable` plus `routes_to` is the bright line that no approver can cross.
+
+policy_version: "2026.1"
+
+# Authority ladder, low to high. "minimum authority to approve" is the
+# highest rung any fired exception demands.
+authority_levels:
+  - relationship_manager
+  - credit_officer
+  - credit_manager
+  - credit_committee
+
+rules:
+  - code: DSCR-MIN
+    title: Minimum debt service coverage
+    section: "4.3.1"
+    field: dscr
+    operator: lt           # fires when dscr < threshold
+    threshold: 1.20
+    severity: high
+    waiver_authority: credit_manager
+    policy_text: >
+      Debt service coverage (DSCR) for the obligor must be at least 1.20x on a
+      combined business and global cash flow basis. Coverage between 1.10x and
+      1.20x may be approved at credit manager level with documented
+      compensating factors such as additional collateral or a guarantor with
+      demonstrated liquidity. Coverage below 1.10x requires credit committee
+      approval.
+
+  - code: LEVERAGE-MAX
+    title: Maximum leverage
+    section: "4.4.1"
+    field: leverage
+    operator: gt           # fires when leverage > threshold
+    threshold: 4.0
+    severity: medium
+    waiver_authority: credit_manager
+    policy_text: >
+      Total funded debt to EBITDA must not exceed 4.0x. Leverage between 4.0x
+      and 4.5x may be approved at credit manager level where supported by a
+      clear deleveraging trend or seasonal working capital needs. Leverage
+      above 4.5x requires credit committee approval.
+
+  - code: UTILIZATION-HIGH
+    title: Revolving line utilization
+    section: "5.2.1"
+    field: utilization
+    operator: gt
+    threshold: 0.90
+    severity: low
+    waiver_authority: credit_officer
+    policy_text: >
+      Sustained utilization above 90% on a revolving line may indicate the
+      facility is funding losses rather than seasonal working capital. Lines
+      operating above this level at renewal warrant a review of the borrowing
+      base and repayment capacity, notable at credit officer level.
+
+  - code: INCOME-MISREP
+    title: Suspected income misrepresentation
+    section: "6.2.2"
+    field: income_discrepancy_pct
+    operator: gt
+    threshold: 0.25
+    severity: severe
+    waiver_authority: unwaivable
+    routes_to: compliance
+    policy_text: >
+      A variance greater than 25% between stated and documented income, or any
+      indication of altered documentation, constitutes suspected
+      misrepresentation. Such findings are not waivable at any authority level
+      and must be referred directly to the compliance officer for review under
+      the institution's fraud and fair lending procedures.

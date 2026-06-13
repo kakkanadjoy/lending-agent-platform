@@ -109,14 +109,15 @@ def get_loan(conn: psycopg.Connection, loan_id: str) -> dict[str, Any] | None:
 def upsert_loan_financials(conn: psycopg.Connection, loan_id: str, *,
                           dscr: float | None = None, dscr_prior: float | None = None,
                           leverage: float | None = None, utilization: float | None = None,
+                          income_discrepancy_pct: float | None = None,
                           ground_truth: dict | None = None) -> None:
     """Attach headline financials and the planted ground truth to a loan.
     Separate from create_loan so the core insert stays simple."""
     with conn.cursor() as cur:
         cur.execute(
             "UPDATE loans SET dscr=%s, dscr_prior=%s, leverage=%s, utilization=%s, "
-            "ground_truth=%s WHERE loan_id=%s",
-            (dscr, dscr_prior, leverage, utilization,
+            "income_discrepancy_pct=%s, ground_truth=%s WHERE loan_id=%s",
+            (dscr, dscr_prior, leverage, utilization, income_discrepancy_pct,
              psycopg.types.json.Jsonb(ground_truth or {}), loan_id),
         )
 

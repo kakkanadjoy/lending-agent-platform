@@ -29,6 +29,7 @@ from db import repository as repo
 # the Phase 1 rules engine will enforce; kept here so the cast is meaningful).
 DSCR_MIN = 1.20
 LEVERAGE_MAX = 4.0
+UTILIZATION_MAX = 0.90
 INCOME_DISCREPANCY_COMPLIANCE = 0.25
 
 INDUSTRIES = [  # (naics, label)
@@ -101,7 +102,8 @@ def _plant_cast(conn, today):
                      status="active", risk_rating=6)
     repo.upsert_loan_financials(conn, "LN-DEMO-DETERIORATING",
         dscr=1.12, dscr_prior=1.38, leverage=3.4, utilization=0.91,
-        ground_truth={"profile": "deteriorating", "expected_exceptions": ["DSCR-MIN"],
+        ground_truth={"profile": "deteriorating",
+                      "expected_exceptions": ["DSCR-MIN", "UTILIZATION-HIGH"],
                       "deteriorated": True})
     _docs_for(conn, "LN-DEMO-DETERIORATING", "renewal-2026", 2025, 0.6, rng)
 
@@ -124,8 +126,9 @@ def _plant_cast(conn, today):
                      status="active", risk_rating=8)
     repo.upsert_loan_financials(conn, "LN-DEMO-COMPLIANCE",
         dscr=1.05, dscr_prior=1.20, leverage=4.5, utilization=0.94,
+        income_discrepancy_pct=0.34,
         ground_truth={"profile": "misrepresentation",
-                      "expected_exceptions": ["DSCR-MIN", "LEVERAGE-MAX", "INCOME-MISREP"],
+                      "expected_exceptions": ["DSCR-MIN", "LEVERAGE-MAX", "UTILIZATION-HIGH", "INCOME-MISREP"],
                       "income_discrepancy_pct": 0.34, "deteriorated": True,
                       "routes_to": "compliance"})
     _docs_for(conn, "LN-DEMO-COMPLIANCE", "renewal-2026", 2025, 0.8, rng)
@@ -156,11 +159,25 @@ def _plant_bulk(conn, today, n, seed):
             leverage = round(rng.uniform(1.8, 3.8), 3)
 
         util = round(rng.uniform(0.2, 0.97), 4) if is_revolver else None
+
+        # Most loans have clean income verification; a small slice carries a
+        # discrepancy, and a sliver of those cross the misrepresentation line.
+        income_disc = 0.0
+        roll = rng.random()
+        if roll < 0.06:
+            income_disc = round(rng.uniform(0.26, 0.45), 4)   # over the compliance line
+        elif roll < 0.18:
+            income_disc = round(rng.uniform(0.05, 0.20), 4)   # present but within tolerance
+
         expected = []
         if dscr < DSCR_MIN:
             expected.append("DSCR-MIN")
         if leverage > LEVERAGE_MAX:
             expected.append("LEVERAGE-MAX")
+        if util is not None and util > UTILIZATION_MAX:
+            expected.append("UTILIZATION-HIGH")
+        if income_disc > INCOME_DISCREPANCY_COMPLIANCE:
+            expected.append("INCOME-MISREP")
 
         loan_id = f"LN-{2026}-{idx:05d}"
         mat = str(_spread_maturity(rng, today)) if is_revolver else str(today + dt.timedelta(days=rng.randint(200, 1400)))
@@ -170,8 +187,10 @@ def _plant_bulk(conn, today, n, seed):
                          risk_rating=rng.randint(3, 8))
         repo.upsert_loan_financials(conn, loan_id,
             dscr=dscr, dscr_prior=dscr_prior, leverage=leverage, utilization=util,
+            income_discrepancy_pct=income_disc,
             ground_truth={"profile": "bulk", "expected_exceptions": expected,
-                          "deteriorated": deteriorated})
+                          "deteriorated": deteriorated,
+                          "routes_to": "compliance" if "INCOME-MISREP" in expected else None})
         cycle = "renewal-2026" if is_revolver else "review-2026"
         _docs_for(conn, loan_id, cycle, 2025, rng.uniform(0.4, 1.0), rng)
     return n
