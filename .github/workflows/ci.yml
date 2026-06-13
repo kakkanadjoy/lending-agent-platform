@@ -1,0 +1,44 @@
+name: ci
+
+# Runs on every push and PR. Spins up a throwaway postgres (a "service
+# container"), applies the schema, and runs the repository tests against it.
+# This is the same idea as the local compose stack, expressed in CI syntax.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: lending
+          POSTGRES_PASSWORD: lending
+          POSTGRES_DB: lending
+        ports:
+          - 5432:5432
+        # wait until postgres is actually accepting connections before the job runs
+        options: >-
+          --health-cmd "pg_isready -U lending"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://lending:lending@localhost:5432/lending
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Apply schema
+        run: python db/apply_schema.py
+      - name: Run tests
+        run: python -m pytest tests/ -q
