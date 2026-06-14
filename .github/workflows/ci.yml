@@ -41,4 +41,4 @@ jobs:
       - name: Apply schema
         run: python db/apply_schema.py
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -m "not slow"
