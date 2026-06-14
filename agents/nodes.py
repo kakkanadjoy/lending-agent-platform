@@ -103,3 +103,17 @@ def compliance_hold(state: RenewalState) -> RenewalState:
     return {"review_text": "Referred to compliance: suspected misrepresentation. "
                            "Not waivable; pending compliance officer review.",
             "trail": _log(state, "routed to compliance hold")}
+
+
+def finalize(state: RenewalState) -> RenewalState:
+    """Runs AFTER the human gate. Folds the reviewer's decision into the record.
+    On the normal path the graph pauses before this node (interrupt) until a
+    human acts; this node then records what they decided."""
+    decision = state.get("human_decision")
+    if decision == "approve":
+        outcome = "approved by reviewer; renewal recommended."
+    elif decision == "decline":
+        outcome = "declined by reviewer; renewal not recommended."
+    else:
+        outcome = "no human decision recorded."
+    return {"trail": _log(state, f"finalized: {outcome}")}
