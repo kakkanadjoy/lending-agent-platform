@@ -62,6 +62,33 @@ CREATE TABLE IF NOT EXISTS documents (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ── policy_chunks — the RAG corpus (semantic + lexical in one table) ──────
+-- Generated from rules/policy.yaml. Each row is one policy section, carrying
+-- BOTH an embedding (for semantic search via pgvector) and a tsvector (for
+-- lexical search via postgres full-text). The two retrieval halves live in
+-- the same table, the same database — no separate search engine.
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS policy_chunks (
+    chunk_id        TEXT PRIMARY KEY,            -- e.g. "policy-DSCR-MIN"
+    code            TEXT NOT NULL,               -- exception code this section governs
+    section         TEXT NOT NULL,               -- "4.3.1" — citable
+    title           TEXT NOT NULL,
+    body            TEXT NOT NULL,               -- the retrievable policy text
+    embedding       vector(384),                 -- all-MiniLM-L6-v2 dimensionality
+    -- tsv is derived from body for full-text search; GENERATED keeps it in
+    -- sync automatically on every insert/update.
+    tsv             tsvector GENERATED ALWAYS AS (to_tsvector('english', body)) STORED
+);
+
+-- Lexical search rides this GIN index over the tsvector.
+CREATE INDEX IF NOT EXISTS idx_policy_chunks_tsv ON policy_chunks USING GIN (tsv);
+-- Semantic search rides an IVFFlat index over the embedding (cosine distance).
+-- (For a corpus this small a sequential scan is fine; the index is here for
+-- correctness of approach and to scale without code changes.)
+CREATE INDEX IF NOT EXISTS idx_policy_chunks_embedding
+    ON policy_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
+
 -- ── events — THE OUTBOX (the nervous system) ─────────────────────────────
 -- Append-only journal of everything that happens. The dispatcher worker
 -- reads unprocessed rows in order and acts on them (starts/resumes agents).
