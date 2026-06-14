@@ -1,0 +1,68 @@
+"""Score loans with the trained early-warning model.
+
+Loads the model from the MLflow registry by name (not a file path), so
+promoting a new version in MLflow changes what serves here with no code
+change. The score is a deterioration probability in [0,1] used to ORDER the
+renewal queue and size the document chase — it prioritizes attention and
+never decides anything.
+
+If no model has been trained yet, scoring falls back to a transparent
+heuristic so the rest of the platform still works during early development.
+"""
+from __future__ import annotations
+
+import functools
+import os
+
+import numpy as np
+
+from ews.features import build_features
+
+MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+REGISTERED_NAME = "ews-deterioration"
+
+
+@functools.lru_cache(maxsize=1)
+def _model():
+    """Load the latest registered EWS model once. Returns None if unavailable
+    (not trained yet, MLflow down) so callers can fall back."""
+    try:
+        import mlflow
+        mlflow.set_tracking_uri(MLFLOW_URI)
+        return mlflow.xgboost.load_model(f"models:/{REGISTERED_NAME}/latest")
+    except Exception:
+        return None
+
+
+def _heuristic(loan: dict) -> float:
+    """Transparent stand-in when no model is loaded: a coverage drop and hot
+    utilization both push the score up. Bounded to [0,1]."""
+    f = build_features(loan)
+    dscr, dscr_delta, _, leverage, utilization, high_util, _ = f
+    score = 0.0
+    if dscr < 1.20:
+        score += 0.4
+    if dscr_delta < 0:
+        score += min(0.3, -dscr_delta)
+    if leverage > 4.0:
+        score += 0.2
+    score += 0.1 * high_util
+    return max(0.0, min(1.0, score))
+
+
+def score_loan(loan: dict) -> float:
+    """Deterioration risk in [0,1] for one loan."""
+    model = _model()
+    if model is None:
+        return _heuristic(loan)
+    import xgboost as xgb
+    dmatrix = xgb.DMatrix(np.array([build_features(loan)], dtype=float))
+    return float(model.predict(dmatrix)[0])
+
+
+def score_many(loans: list[dict]) -> list[tuple[str, float]]:
+    """Score a batch and return (loan_id, score) sorted worst-first — the
+    renewal queue ordering."""
+    scored = [(l["loan_id"], score_loan(l)) for l in loans]
+    scored.sort(key=lambda t: t[1], reverse=True)
+    return scored

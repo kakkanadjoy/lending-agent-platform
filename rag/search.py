@@ -38,15 +38,35 @@ class Hit:
     found_by: str           # "lexical", "semantic", or "both" — for transparency
 
 
+# def _lexical(conn, query: str, limit: int) -> list[str]:
+#     """Top chunk_ids by postgres full-text rank. We compute the tsquery once
+#     in a subquery and reuse it for both the match and the ranking — clearer,
+#     and it sidesteps a psycopg quirk with the same function appearing twice."""
+#     with conn.cursor() as cur:
+#         cur.execute(
+#             "SELECT chunk_id FROM policy_chunks, "
+#             "plainto_tsquery('english', %s) AS q "
+#             "WHERE tsv @@ q "
+#             "ORDER BY ts_rank(tsv, q) DESC LIMIT %s",
+#             (query, limit),
+#         )
+#         return [r["chunk_id"] for r in cur.fetchall()]
+
 def _lexical(conn, query: str, limit: int) -> list[str]:
-    """Top chunk_ids by postgres full-text rank. plainto_tsquery turns the
-    query into terms without the caller needing tsquery syntax."""
+    """Top chunk_ids by postgres full-text rank. We OR the query terms (rather
+    than plainto_tsquery's implicit AND) so a multi-word natural-language query
+    matches sections sharing ANY salient term, ranked by overlap."""
+    terms = [t for t in query.replace(",", " ").split() if t.isalnum()]
+    if not terms:
+        return []
+    tsquery = " | ".join(terms)  # OR them together
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT chunk_id FROM policy_chunks "
-            "WHERE tsv @@ plainto_tsquery('english', %s) "
-            "ORDER BY ts_rank(tsv, plainto_tsquery('english', %s)) DESC LIMIT %s",
-            (query, query, limit),
+            "SELECT chunk_id, ts_rank(tsv, to_tsquery('english', %(q)s)) AS rank "
+            "FROM policy_chunks "
+            "WHERE tsv @@ to_tsquery('english', %(q)s) "
+            "ORDER BY rank DESC LIMIT %(lim)s",
+            {"q": tsquery, "lim": limit},
         )
         return [r["chunk_id"] for r in cur.fetchall()]
 

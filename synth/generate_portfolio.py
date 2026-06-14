@@ -147,18 +147,27 @@ def _plant_bulk(conn, today, n, seed):
         ftype = "revolving_line" if is_revolver else rng.choice(["term_loan", "owner_occ_cre", "equipment"])
         commitment = rng.choice([250_000, 500_000, 750_000, 1_000_000, 1_500_000, 2_500_000])
 
-        # Decide truth first: is this credit healthy or deteriorating?
-        deteriorated = rng.random() < 0.22
-        if deteriorated:
-            dscr = round(rng.uniform(0.95, 1.22), 3)
-            dscr_prior = round(dscr + rng.uniform(0.15, 0.45), 3)
-            leverage = round(rng.uniform(3.6, 5.2), 3)
-        else:
-            dscr = round(rng.uniform(1.25, 2.10), 3)
-            dscr_prior = round(dscr + rng.uniform(-0.15, 0.15), 3)
-            leverage = round(rng.uniform(1.8, 3.8), 3)
-
+        # Generate this loan's financials independently — NOT derived from the
+        # label. Deterioration is then a noisy function of several of them, so
+        # no single feature gives the answer away and the model has to combine
+        # evidence (the way a real early-warning model earns its keep).
+        dscr = round(rng.uniform(1.0, 2.1), 3)
+        dscr_delta = round(rng.gauss(0.0, 0.25), 3)        # year-over-year drift
+        dscr_prior = round(dscr - dscr_delta, 3)
+        leverage = round(rng.uniform(1.8, 5.2), 3)
         util = round(rng.uniform(0.2, 0.97), 4) if is_revolver else None
+
+        # Latent deterioration risk: coverage erosion, weak coverage, high
+        # leverage, and hot utilization each nudge it up; none dominates, and a
+        # random term blurs the boundary so the classes overlap.
+        risk = 0.0
+        risk += max(0.0, -dscr_delta) * 1.4          # falling coverage is the strongest hint
+        risk += max(0.0, 1.35 - dscr) * 0.9          # thin coverage
+        risk += max(0.0, leverage - 3.5) * 0.25      # stretched leverage
+        if util is not None:
+            risk += max(0.0, util - 0.80) * 1.2      # revolver running hot
+        risk += rng.gauss(0.0, 0.20)                 # noise
+        deteriorated = risk > 0.55
 
         # Most loans have clean income verification; a small slice carries a
         # discrepancy, and a sliver of those cross the misrepresentation line.

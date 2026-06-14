@@ -86,8 +86,8 @@ CREATE INDEX IF NOT EXISTS idx_policy_chunks_tsv ON policy_chunks USING GIN (tsv
 -- Semantic search rides an IVFFlat index over the embedding (cosine distance).
 -- (For a corpus this small a sequential scan is fine; the index is here for
 -- correctness of approach and to scale without code changes.)
-CREATE INDEX IF NOT EXISTS idx_policy_chunks_embedding
-    ON policy_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
+-- CREATE INDEX IF NOT EXISTS idx_policy_chunks_embedding
+--     ON policy_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
 
 -- ── events — THE OUTBOX (the nervous system) ─────────────────────────────
 -- Append-only journal of everything that happens. The dispatcher worker
