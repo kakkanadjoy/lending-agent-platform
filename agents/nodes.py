@@ -75,7 +75,14 @@ def retrieve_policy(state: RenewalState) -> RenewalState:
 
 def draft_review(state: RenewalState) -> RenewalState:
     """STUB: assemble a templated review from verified facts. Swapped for a
-    real LLM call in Step 4 — same inputs, same output key."""
+    real LLM call in Step 4 — same inputs, same output key.
+
+    Whatever produces the text (stub now, LLM later), the OUTBOUND guardrails
+    validate it before it leaves this node: every number must match a verified
+    fact, every citation must exist, no out-of-scope claims. The check runs the
+    same way regardless of who wrote the draft."""
+    from agents.guardrails import validate_draft
+
     loan = state["loan"]
     lines = [
         f"Annual renewal review for {loan['loan_id']}.",
@@ -93,8 +100,14 @@ def draft_review(state: RenewalState) -> RenewalState:
     else:
         lines.append("No policy exceptions. Credit within guidelines.")
     lines.append("Recommendation: [to be completed by the underwriter].")
-    return {"review_text": "\n".join(lines),
-            "trail": _log(state, "drafted review (stub)")}
+    review_text = "\n".join(lines)
+
+    guard = validate_draft(review_text, state)
+    trail_msg = ("drafted review (stub)" if guard.ok
+                 else f"drafted review FLAGGED by guardrails: {guard.findings}")
+    return {"review_text": review_text,
+            "draft_flags": guard.findings,
+            "trail": _log(state, trail_msg)}
 
 
 def compliance_hold(state: RenewalState) -> RenewalState:

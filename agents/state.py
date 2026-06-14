@@ -36,6 +36,7 @@ class RenewalState(TypedDict, total=False):
 
     # filled by draft_review (stub for now, LLM later)
     review_text: str
+    draft_flags: list[str]            # guardrail findings on the draft (empty = clean)
 
     # filled when a human acts at the gate
     human_decision: Optional[str]     # approve | decline | None while pending
