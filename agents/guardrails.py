@@ -108,29 +108,38 @@ def screen_injection(text: str) -> GuardResult:
 # ── 3. numeric fidelity (outbound) — the star ─────────────────────────────
 
 _NUM = re.compile(r"-?\d+\.?\d*")
+# Loan IDs and similar identifiers: a letter-run, a hyphen, then alnum chunks
+# (e.g. LN-DEMO-CLEAN, LN-2026-02002, LN-1). Their digits are not financial
+# claims, so we remove them before the numeric scan.
+_IDENTIFIER = re.compile(r"\b[A-Za-z]{2,}-[A-Za-z0-9-]+")
 
 
 def _verified_numbers(state: dict) -> set[str]:
     """Every number the draft is allowed to state, drawn from the verified
     facts on the state: the loan financials, the EWS score, and the observed/
-    threshold values from each fired exception."""
-    allowed: set[float] = set()
+    threshold values from each fired exception. We also include common ROUNDED
+    forms (2dp, 1dp, integer) of each value, because a draft legitimately
+    rounds for readability (an EWS of 0.002 shown as 0.00 is not a fabrication)."""
+    raw_values: set[float] = set()
     loan = state.get("loan", {})
     for key in ("dscr", "dscr_prior", "leverage", "utilization", "commitment"):
         v = loan.get(key)
         if v is not None:
-            allowed.add(round(float(v), 4))
+            raw_values.add(float(v))
     if "ews_score" in state:
-        allowed.add(round(float(state["ews_score"]), 4))
+        raw_values.add(float(state["ews_score"]))
     for exc in state.get("exceptions", []):
         for key in ("observed", "threshold"):
             if exc.get(key) is not None:
-                allowed.add(round(float(exc[key]), 4))
-    # store as strings at a few precisions so "1.2" matches a stored 1.2000
+                raw_values.add(float(exc[key]))
+
     out: set[str] = set()
-    for v in allowed:
-        out.add(f"{v:.4f}".rstrip("0").rstrip("."))
-        out.add(str(v))
+    for v in raw_values:
+        # exact (trimmed) plus rounded representations the draft might use
+        for s in (f"{v:.4f}", f"{v:.3f}", f"{v:.2f}", f"{v:.1f}", f"{v:.0f}", str(v)):
+            out.add(s)
+            if "." in s:
+                out.add(s.rstrip("0").rstrip("."))
     return out
 
 
@@ -138,12 +147,13 @@ def check_numbers(review_text: str, state: dict) -> GuardResult:
     """Every number in the draft must match a verified value. A fabricated
     figure (memo says DSCR 1.45 when the spread says 1.12) is caught here.
 
-    Section references like "section 4.3.1" are NOT financial claims — they're
-    citations, validated separately by check_citations — so we strip them
-    before scanning for numbers, otherwise 4, 3, 1 would look fabricated."""
+    Section references ("section 4.3.1") and identifiers ("LN-DEMO-CLEAN",
+    "LN-1") are NOT financial claims — they're citations and IDs — so we strip
+    them before scanning, otherwise their digits would look fabricated."""
     result = GuardResult(True)
     allowed = _verified_numbers(state)
-    text = _SECTION.sub(" ", review_text or "")   # drop "section X.Y.Z" first
+    text = _SECTION.sub(" ", review_text or "")       # drop "section X.Y.Z"
+    text = _IDENTIFIER.sub(" ", text)                 # drop "LN-1234"-style IDs
     for raw in _NUM.findall(text):
         norm = raw.rstrip("0").rstrip(".") if "." in raw else raw
         # accept exact, normalized, or a float-equal match against allowed

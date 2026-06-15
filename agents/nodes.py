@@ -74,15 +74,37 @@ def retrieve_policy(state: RenewalState) -> RenewalState:
 
 
 def draft_review(state: RenewalState) -> RenewalState:
-    """STUB: assemble a templated review from verified facts. Swapped for a
-    real LLM call in Step 4 — same inputs, same output key.
+    """Draft the renewal review, then validate it with the outbound guardrails.
 
-    Whatever produces the text (stub now, LLM later), the OUTBOUND guardrails
-    validate it before it leaves this node: every number must match a verified
-    fact, every citation must exist, no out-of-scope claims. The check runs the
-    same way regardless of who wrote the draft."""
+    Generation path: if Azure Foundry is configured, gpt-4.1-mini writes the
+    review from the verified facts (prompt in agents/prompts.py). If not, a
+    templated stub does — so the graph runs offline. Either way the SAME
+    guardrails check the output: every number must match a verified fact, every
+    citation must exist, no out-of-scope claims. The model can corrupt a draft;
+    the guardrails stop it becoming a decision.
+    """
+    from agents import llm, prompts
     from agents.guardrails import validate_draft
 
+    review_text = llm.generate(prompts.SYSTEM, prompts.build_user_prompt(state))
+    source = "llm"
+    if review_text is None:                       # no model configured -> stub
+        review_text = _stub_review(state)
+        source = "stub"
+
+    guard = validate_draft(review_text, state)
+    if guard.ok:
+        trail_msg = f"drafted review ({source})"
+    else:
+        trail_msg = f"drafted review ({source}) FLAGGED by guardrails: {guard.findings}"
+    return {"review_text": review_text,
+            "draft_flags": guard.findings,
+            "trail": _log(state, trail_msg)}
+
+
+def _stub_review(state: RenewalState) -> str:
+    """Templated fallback when no LLM is configured. Built from verified facts,
+    so it always passes the guardrails."""
     loan = state["loan"]
     lines = [
         f"Annual renewal review for {loan['loan_id']}.",
@@ -100,14 +122,7 @@ def draft_review(state: RenewalState) -> RenewalState:
     else:
         lines.append("No policy exceptions. Credit within guidelines.")
     lines.append("Recommendation: [to be completed by the underwriter].")
-    review_text = "\n".join(lines)
-
-    guard = validate_draft(review_text, state)
-    trail_msg = ("drafted review (stub)" if guard.ok
-                 else f"drafted review FLAGGED by guardrails: {guard.findings}")
-    return {"review_text": review_text,
-            "draft_flags": guard.findings,
-            "trail": _log(state, trail_msg)}
+    return "\n".join(lines)
 
 
 def compliance_hold(state: RenewalState) -> RenewalState:
