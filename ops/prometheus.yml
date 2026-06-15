@@ -1,7 +1,21 @@
+# Prometheus scrape configuration.
+# Prometheus PULLS metrics: every `scrape_interval` it GETs /metrics from each
+# target below and stores the numbers as time series.
 global:
-  scrape_interval: 15s
+  scrape_interval: 10s
+  evaluation_interval: 10s
 
 scrape_configs:
-  - job_name: "lending-api"
+  # The platform's own metrics (the FastAPI service).
+  - job_name: lending-api
+    metrics_path: /metrics
     static_configs:
+      # host.docker.internal lets the Prometheus container reach the API
+      # running on the host. If the API runs in compose too, use its service
+      # name (e.g. "api:8000") instead.
       - targets: ["host.docker.internal:8000"]
+
+  # Prometheus scraping itself (handy sanity check).
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

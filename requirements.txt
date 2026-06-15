@@ -15,3 +15,7 @@ presidio-anonymizer>=2.2
 spacy>=3.7
 openai>=1.40
 python-dotenv>=1.0
+fastapi>=0.110
+uvicorn[standard]>=0.27
+prometheus-client>=0.20
+httpx

@@ -54,4 +54,12 @@ def generate(system: str, user: str, temperature: float = 0.2) -> Optional[str]:
         temperature=temperature,
         max_tokens=600,
     )
+    # record token usage / cost for observability (best-effort)
+    try:
+        from api import metrics
+        usage = resp.usage
+        metrics.llm_calls.labels(source="llm").inc()
+        metrics.record_llm_usage(usage.prompt_tokens, usage.completion_tokens)
+    except Exception:
+        pass
     return resp.choices[0].message.content

@@ -1,0 +1,82 @@
+{
+  "title": "Lending Agent Platform",
+  "uid": "lending-platform",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "title": "Renewals started (rate/min)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "rate(renewals_started_total[5m]) * 60", "legendFormat": "started/min"}
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Renewals completed by outcome",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "sum by (outcome) (rate(renewals_completed_total[5m]) * 60)", "legendFormat": "{{outcome}}"}
+      ]
+    },
+    {
+      "id": 3,
+      "title": "LLM cost (cents, cumulative)",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "llm_cost_cents_total", "legendFormat": "cents"}
+      ]
+    },
+    {
+      "id": 4,
+      "title": "LLM tokens (rate/min)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 9, "x": 6, "y": 8},
+      "targets": [
+        {"expr": "sum by (kind) (rate(llm_tokens_total[5m]) * 60)", "legendFormat": "{{kind}}"}
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Guardrail flags by kind (rate/min)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 9, "x": 15, "y": 8},
+      "targets": [
+        {"expr": "sum by (kind) (rate(guardrail_flags_total[5m]) * 60)", "legendFormat": "{{kind}}"}
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Node latency p95 (seconds)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum by (le, node) (rate(renewal_node_duration_seconds_bucket[5m])))", "legendFormat": "{{node}} p95"}
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Renewal queue depth",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 16},
+      "targets": [
+        {"expr": "renewal_queue_depth", "legendFormat": "loans"}
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Outbox unprocessed events",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 16},
+      "targets": [
+        {"expr": "outbox_unprocessed_events", "legendFormat": "events"}
+      ]
+    }
+  ]
+}
