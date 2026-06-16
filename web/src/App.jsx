@@ -163,7 +163,26 @@ function Gate({ loanId, role }) {
       {isCompliance && <div className="bright-line">Bright line: routed to compliance for suspected misrepresentation. No renewal review is drafted.</div>}
       {!isCompliance && (
         <section className="review">
-          <h3>Drafted review</h3>
+          {(state.exceptions || []).length > 0 && (
+            <div className="exceptions">
+              <h3>Policy Exceptions</h3>
+              <table className="exc-table">
+                <thead><tr><th>Code</th><th>Severity</th><th>Observed</th><th>Threshold</th><th>Waiver Authority</th></tr></thead>
+                <tbody>
+                  {state.exceptions.map((e, i) => (
+                    <tr key={i}>
+                      <td>{e.code}</td>
+                      <td><span className={"sev sev-" + e.severity}>{e.severity}</span></td>
+                      <td>{e.observed}</td>
+                      <td>{e.threshold}</td>
+                      <td>{e.waiver_authority || "unwaivable"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <h3>Drafted Review</h3>
           <pre className="review-text">{state.review_text}</pre>
           {flags.length > 0 && <div className="flags">Guardrails flagged this draft:<ul>{flags.map((f, i) => <li key={i}>{f}</li>)}</ul></div>}
         </section>

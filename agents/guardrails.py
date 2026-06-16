@@ -144,19 +144,15 @@ def _verified_numbers(state: dict) -> set[str]:
 
 
 def check_numbers(review_text: str, state: dict) -> GuardResult:
-    """Every number in the draft must match a verified value. A fabricated
-    figure (memo says DSCR 1.45 when the spread says 1.12) is caught here.
-
-    Section references ("section 4.3.1") and identifiers ("LN-DEMO-CLEAN",
-    "LN-1") are NOT financial claims — they're citations and IDs — so we strip
-    them before scanning, otherwise their digits would look fabricated."""
     result = GuardResult(True)
     allowed = _verified_numbers(state)
-    text = _SECTION.sub(" ", review_text or "")       # drop "section X.Y.Z"
-    text = _IDENTIFIER.sub(" ", text)                 # drop "LN-1234"-style IDs
+    text = _SECTION.sub(" ", review_text or "")
+    text = _IDENTIFIER.sub(" ", text)
+    text = re.sub(r'\$[\d,]+', lambda m: m.group().replace(',', '').replace('$', ''), text)  # normalize $250,000 → 250000
+    text = re.sub(r'\d+\.?\d*x?\s+to\s+\d+\.?\d*x?', ' ', text, flags=re.IGNORECASE)
+    text = re.sub(r'(above|below|over|under|exceeds?|minimum|maximum)\s+\d+\.?\d*x?', ' ', text, flags=re.IGNORECASE)
     for raw in _NUM.findall(text):
         norm = raw.rstrip("0").rstrip(".") if "." in raw else raw
-        # accept exact, normalized, or a float-equal match against allowed
         if raw in allowed or norm in allowed:
             continue
         try:

@@ -30,13 +30,15 @@ def is_configured() -> bool:
 
 @functools.lru_cache(maxsize=1)
 def _client():
-    """Build the Azure OpenAI client once. Imported lazily so the package is
-    only needed when real generation is actually used."""
-    from openai import AzureOpenAI
-    return AzureOpenAI(
-        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+    from openai import OpenAI
+    endpoint = os.environ["AZURE_OPENAI_ENDPOINT"].rstrip("/")
+    # The Foundry project URL ends in /openai/v1/responses — strip that suffix
+    # so the OpenAI client can append /chat/completions correctly
+    if endpoint.endswith("/responses"):
+        endpoint = endpoint[:-len("/responses")]
+    return OpenAI(
+        base_url=f"{endpoint}/",
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
-        api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
     )
 
 

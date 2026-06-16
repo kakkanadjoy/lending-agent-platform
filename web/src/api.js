@@ -52,7 +52,8 @@
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 async function request(path, options) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const prefix = API_BASE ? "" : "/api";
+  const res = await fetch(`${API_BASE}${prefix}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
@@ -88,7 +89,8 @@ export function resumeRenewal(threadId, decision) {
 export function uploadDocument(file) {
   const form = new FormData();
   form.append("file", file);
-  return fetch("/api/upload", { method: "POST", body: form })
+  const url = API_BASE ? `${API_BASE}/upload` : "/api/upload";
+  return fetch(url, { method: "POST", body: form })
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
 }
 

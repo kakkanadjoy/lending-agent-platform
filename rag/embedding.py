@@ -16,15 +16,33 @@ RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L6-v2"      # ~80MB
 
 @functools.lru_cache(maxsize=1)
 def _embedder():
+    import torch
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBED_MODEL)
-
+    original_to = torch.nn.Module.to
+    def safe_to(self, *args, **kwargs):
+        try:
+            return original_to(self, *args, **kwargs)
+        except NotImplementedError:
+            return self
+    torch.nn.Module.to = safe_to
+    model = SentenceTransformer(EMBED_MODEL)
+    torch.nn.Module.to = original_to
+    return model
 
 @functools.lru_cache(maxsize=1)
 def _reranker():
+    import torch
     from sentence_transformers import CrossEncoder
-    return CrossEncoder(RERANK_MODEL)
-
+    original_to = torch.nn.Module.to
+    def safe_to(self, *args, **kwargs):
+        try:
+            return original_to(self, *args, **kwargs)
+        except NotImplementedError:
+            return self
+    torch.nn.Module.to = safe_to
+    model = CrossEncoder(RERANK_MODEL)
+    torch.nn.Module.to = original_to
+    return model
 
 def embed_one(text: str) -> list[float]:
     """A single text -> its embedding vector (as a plain list for psycopg)."""

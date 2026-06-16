@@ -212,4 +212,13 @@ section h3 {
   word-break: break-all; line-height: 1.5;
 }
 
+.exceptions { margin-bottom: 1.2rem; }
+.exc-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.exc-table th { text-align: left; padding: 0.35rem 0.6rem; background: #f0f2f5; color: #555; font-weight: 600; border-bottom: 1px solid #ddd; }
+.exc-table td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #eee; }
+.sev { padding: 0.15rem 0.45rem; border-radius: 3px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+.sev-high   { background: #fde8e8; color: #c0392b; }
+.sev-medium { background: #fef3e0; color: #d35400; }
+.sev-low    { background: #eaf4fb; color: #2471a3; }
+.sev-severe { background: #4a0000; color: #fff; }
 

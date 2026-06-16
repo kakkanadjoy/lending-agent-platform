@@ -72,8 +72,15 @@ def start(req: StartRequest):
     if not paused:                     # compliance path completes immediately
         metrics.renewals_completed.labels(outcome="compliance").inc()
 
+    # return {"thread_id": thread_id, "paused": paused,
+    #         "routing": state.get("routing"),
+    #         "review_text": state.get("review_text"),
+    #         "draft_flags": state.get("draft_flags", []),
+    #         "trail": state.get("trail", [])}
     return {"thread_id": thread_id, "paused": paused,
             "routing": state.get("routing"),
+            "exceptions": state.get("exceptions", []),
+            "citations": state.get("citations", []),
             "review_text": state.get("review_text"),
             "draft_flags": state.get("draft_flags", []),
             "trail": state.get("trail", [])}
