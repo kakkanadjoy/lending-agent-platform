@@ -28,23 +28,30 @@ function eventLabel(e) {
 }
 
 function Queue({ onSelect, selectedId }) {
-  const [rows,  setRows]  = useState(null);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
+  const [rows,    setRows]    = useState(null);
+  const [allRows, setAllRows] = useState([]);
+  const [error,   setError]   = useState(null);
+  const [search,  setSearch]  = useState("");
+
   useEffect(() => {
     fetchQueue(50).then(setRows).catch((e) => setError(e.message));
+    fetchQueue(604).then(setAllRows).catch(() => {});
   }, []);
+
   if (error)             return <div className="panel-msg">Could not load queue. ({error})</div>;
   if (!rows)             return <div className="panel-msg">Loading...</div>;
   if (rows.length === 0) return <div className="panel-msg">No loans yet.</div>;
-  const filtered = rows.filter(r => 
-    r.loan_id.toLowerCase().includes(search.toLowerCase())
-  );
+
+  const displayRows = search
+    ? allRows.filter(r => r.loan_id.toLowerCase().includes(search.toLowerCase()))
+    : rows;
   return (
     <div className="queue">
       <div className="queue-head">
         <span>Renewal queue</span>
-        <span className="queue-sub">{rows.length} loans · worst first</span>
+        <span className="queue-sub">
+  {search ? `${displayRows.length} results` : `${rows.length} loans · worst first`}
+</span>
       </div>
       <input
         className="queue-search"
@@ -52,7 +59,7 @@ function Queue({ onSelect, selectedId }) {
         value={search}
         onChange={e => setSearch(e.target.value)}
       />
-      {filtered.map((r, i) => {
+      {displayRows.map((r, i) => {
         const band = riskBand(r.ews_score);
         const selCls = selectedId === r.loan_id ? "is-selected" : "";
         return (
