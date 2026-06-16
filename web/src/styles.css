@@ -222,3 +222,15 @@ section h3 {
 .sev-low    { background: #eaf4fb; color: #2471a3; }
 .sev-severe { background: #4a0000; color: #fff; }
 
+.queue-search {
+  width: calc(100% - 1.2rem);
+  margin: 0.4rem 0.6rem 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #dde3ec;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #1a1f2b;
+  outline: none;
+}
+.queue-search:focus { border-color: #4FC3F7; }
+
