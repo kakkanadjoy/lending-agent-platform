@@ -36,8 +36,23 @@
 // so these paths stay relative. Each function maps to one endpoint the desk
 // needs; the components never build URLs themselves.
 
+// async function request(path, options) {
+//   const res = await fetch(`/api${path}`, {
+//     headers: { "Content-Type": "application/json" },
+//     ...options,
+//   });
+//   if (!res.ok) {
+//     const detail = await res.text();
+//     throw new Error(`${res.status}: ${detail}`);
+//   }
+//   return res.json();
+// }
+
+
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 async function request(path, options) {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });

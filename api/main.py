@@ -32,6 +32,19 @@ except Exception:
 
 app = FastAPI(title="Lending Agent Platform", version="0.1.0")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://proud-flower-0e426cc0f.7.azurestaticapps.net",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # ── request/response models ───────────────────────────────────────────────
 class StartRequest(BaseModel):

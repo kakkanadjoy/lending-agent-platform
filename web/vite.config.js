@@ -4,13 +4,30 @@ import react from "@vitejs/plugin-react";
 // The dev server proxies API calls to the FastAPI backend on :8000, so the
 // frontend can call "/api/..." without CORS headaches. In production the two
 // would be served behind the same origin (or CORS configured explicitly).
+// export default defineConfig({
+//   plugins: [react()],
+//   server: {
+//     port: 5173,
+//     proxy: {
+//       "/api": {
+//         target: "http://localhost:8000",
+//         changeOrigin: true,
+//         rewrite: (path) => path.replace(/^\/api/, ""),
+//       },
+//     },
+//   },
+// });
+
+
+const API_TARGET = process.env.VITE_API_URL || "http://localhost:8000";
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: API_TARGET,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
