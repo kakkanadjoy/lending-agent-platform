@@ -1,0 +1,135 @@
+/* Renewal Desk — a calm, dense, professional banking tool.
+   The priority signal (EWS risk) carries the color story; everything else
+   stays quiet. Financial figures use tabular numerals so columns align. */
+
+:root {
+  --ink: #1a1f2b;
+  --ink-soft: #5b6472;
+  --line: #e4e7ec;
+  --surface: #ffffff;
+  --canvas: #f6f7f9;
+  --accent: #2f5fe0;
+
+  --risk-high: #d23f3f;
+  --risk-watch: #d89020;
+  --risk-healthy: #3a9b6e;
+
+  --risk-high-bg: #fbeaea;
+  --risk-watch-bg: #fbf2e2;
+  --risk-healthy-bg: #e9f5ef;
+
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.app {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--canvas);
+  min-height: 100vh;
+  font-feature-settings: "tnum" 1;   /* tabular numerals for aligned figures */
+}
+
+/* ── top bar ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 56px;
+  background: var(--ink); color: #fff;
+}
+.brand { font-weight: 650; letter-spacing: -0.01em; }
+.role {
+  font-size: 13px; color: #c9d2e3;
+  border: 1px solid #3a4458;
+  padding: 4px 10px; border-radius: 999px;
+}
+
+/* ── layout ── */
+.layout { display: grid; grid-template-columns: 420px 1fr; gap: 0; }
+.sidebar { border-right: 1px solid var(--line); background: var(--surface); min-height: calc(100vh - 56px); }
+.main { padding: 28px 32px; }
+
+/* ── queue (the priority rail — the signature) ── */
+.queue-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 18px 20px 10px; font-weight: 600;
+}
+.queue-sub { font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+
+.queue-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 80px 64px 44px;
+  align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 11px 20px; border: none; border-top: 1px solid var(--line);
+  background: transparent; cursor: pointer; font-family: inherit;
+}
+.queue-row:hover { background: var(--canvas); }
+.queue-row.is-selected { background: #eef3fe; box-shadow: inset 3px 0 0 var(--accent); }
+
+.rank { color: var(--ink-soft); font-size: 12px; }
+.loan-id { font-weight: 550; font-size: 14px; letter-spacing: -0.01em; }
+.score { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.risk-bar-wrap { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.risk-bar { display: block; height: 100%; border-radius: 999px; }
+.risk-bar.risk-high { background: var(--risk-high); }
+.risk-bar.risk-watch { background: var(--risk-watch); }
+.risk-bar.risk-healthy { background: var(--risk-healthy); }
+
+.risk-tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; text-align: center; }
+.risk-tag.risk-high { color: var(--risk-high); background: var(--risk-high-bg); }
+.risk-tag.risk-watch { color: var(--risk-watch); background: var(--risk-watch-bg); }
+.risk-tag.risk-healthy { color: var(--risk-healthy); background: var(--risk-healthy-bg); }
+
+/* ── gate screen ── */
+.empty, .panel-msg {
+  color: var(--ink-soft); font-size: 14px; padding: 24px 4px;
+}
+.gate-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.gate-head h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
+.routing-tag { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; }
+.routing-normal { color: var(--accent); background: #eef3fe; }
+.routing-compliance { color: var(--risk-high); background: var(--risk-high-bg); }
+
+.bright-line {
+  border: 1px solid var(--risk-high); background: var(--risk-high-bg);
+  color: #8c2b2b; padding: 12px 14px; border-radius: 8px;
+  font-size: 13px; line-height: 1.5; margin-bottom: 20px;
+}
+
+section { margin-bottom: 22px; }
+section h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-soft); margin: 0 0 8px;
+}
+.review-text {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; font-family: var(--font); font-size: 14px; line-height: 1.55;
+  white-space: pre-wrap; margin: 0;
+}
+.flags {
+  margin-top: 10px; font-size: 13px; color: #8c2b2b;
+  background: var(--risk-high-bg); border-radius: 6px; padding: 10px 12px;
+}
+.flags ul { margin: 6px 0 0; padding-left: 18px; }
+
+.trail ol { margin: 0; padding-left: 18px; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
+
+/* ── actions ── */
+.actions { display: flex; gap: 12px; margin-top: 8px; }
+.btn {
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  padding: 10px 22px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;
+}
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.approve { background: var(--risk-healthy); color: #fff; }
+.btn.decline { background: var(--surface); color: var(--ink); border-color: var(--line); }
+
+.outcome {
+  margin-top: 18px; padding: 14px 16px; border-radius: 8px; font-size: 14px;
+  background: var(--risk-healthy-bg); border: 1px solid var(--risk-healthy);
+}
+.outcome.decline { background: var(--risk-watch-bg); border-color: var(--risk-watch); }
+.trail-after { margin: 6px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 13px; }
