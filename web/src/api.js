@@ -1,3 +1,37 @@
+// // Thin client over the FastAPI backend. The dev server proxies /api -> :8000,
+// // so these paths stay relative. Each function maps to one endpoint the desk
+// // needs; the components never build URLs themselves.
+
+// async function request(path, options) {
+//   const res = await fetch(`/api${path}`, {
+//     headers: { "Content-Type": "application/json" },
+//     ...options,
+//   });
+//   if (!res.ok) {
+//     const detail = await res.text();
+//     throw new Error(`${res.status}: ${detail}`);
+//   }
+//   return res.json();
+// }
+
+// export function fetchQueue(limit = 20) {
+//   return request(`/queue?limit=${limit}`);
+// }
+
+// export function startRenewal(loanId, threadId) {
+//   return request("/renewals/start", {
+//     method: "POST",
+//     body: JSON.stringify({ loan_id: loanId, thread_id: threadId }),
+//   });
+// }
+
+// export function resumeRenewal(threadId, decision) {
+//   return request("/renewals/resume", {
+//     method: "POST",
+//     body: JSON.stringify({ thread_id: threadId, decision }),
+//   });
+// }
+
 // Thin client over the FastAPI backend. The dev server proxies /api -> :8000,
 // so these paths stay relative. Each function maps to one endpoint the desk
 // needs; the components never build URLs themselves.
@@ -16,6 +50,10 @@ async function request(path, options) {
 
 export function fetchQueue(limit = 20) {
   return request(`/queue?limit=${limit}`);
+}
+
+export function fetchEvents(limit = 50) {
+  return request(`/events?limit=${limit}`);
 }
 
 export function startRenewal(loanId, threadId) {

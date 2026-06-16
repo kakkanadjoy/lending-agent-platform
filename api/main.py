@@ -92,6 +92,29 @@ def queue(limit: int = 20):
     return [{"loan_id": lid, "ews_score": round(score, 4)}
             for lid, score in ranked]
 
+# ── activity feed (recent events from the outbox) ──────────────────────────
+@app.get("/events")
+def events(limit: int = 50):
+    from db import repository as repo
+    with repo.connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT event_id, event_type, loan_id, payload, created_at "
+                "FROM events ORDER BY created_at DESC, event_id DESC LIMIT %s",
+                (limit,),
+            )
+            rows = cur.fetchall()
+    return [
+        {
+            "event_id": r["event_id"],
+            "event_type": r["event_type"],
+            "loan_id": r["loan_id"],
+            "payload": r["payload"],
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        }
+        for r in rows
+    ]
+
 
 # ── health + metrics ──────────────────────────────────────────────────────
 @app.get("/health")
