@@ -64,7 +64,7 @@ async function request(path, options) {
   return res.json();
 }
 
-export function fetchQueue(limit = 20) {
+export function fetchQueue(limit = 50) {
   return request(`/queue?limit=${limit}`);
 }
 

@@ -98,7 +98,7 @@ def resume(req: ResumeRequest):
 
 # ── queue endpoint (EWS-ordered) ──────────────────────────────────────────
 @app.get("/queue")
-def queue(limit: int = 20):
+def queue(limit: int = 50):
     from db import repository as repo
     from ews.score import score_many
 
