@@ -22,17 +22,33 @@ MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
 REGISTERED_NAME = "ews-deterioration"
 
 
+LOCAL_MODEL_PATH = os.path.join(
+    os.path.dirname(__file__), "model_artifact", "model", "model.xgb"
+)
+
 @functools.lru_cache(maxsize=1)
 def _model():
-    """Load the latest registered EWS model once. Returns None if unavailable
-    (not trained yet, MLflow down) so callers can fall back."""
+    """Load the EWS model. Priority:
+    1. Local file (baked into Docker image — production path)
+    2. MLflow registry (local dev with MLflow running)
+    3. None -> heuristic fallback
+    """
+    # 1. Local file first (production)
+    if os.path.exists(LOCAL_MODEL_PATH):
+        try:
+            import xgboost as xgb
+            m = xgb.Booster()
+            m.load_model(LOCAL_MODEL_PATH)
+            return m
+        except Exception:
+            pass
+    # 2. MLflow registry (local dev)
     try:
         import mlflow
         mlflow.set_tracking_uri(MLFLOW_URI)
         return mlflow.xgboost.load_model(f"models:/{REGISTERED_NAME}/latest")
     except Exception:
         return None
-
 
 def _heuristic(loan: dict) -> float:
     """Transparent stand-in when no model is loaded: a coverage drop and hot

@@ -1,0 +1,12 @@
+.venv/
+.git/
+.github/
+__pycache__/
+*.pyc
+*.pyo
+mlruns/.trash/
+node_modules/
+web/
+tests/
+.pytest_cache/
+uploads/
