@@ -19,3 +19,4 @@ fastapi>=0.110
 uvicorn[standard]>=0.27
 prometheus-client>=0.20
 httpx
+python-multipart>=0.0.9

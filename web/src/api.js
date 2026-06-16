@@ -69,3 +69,18 @@ export function resumeRenewal(threadId, decision) {
     body: JSON.stringify({ thread_id: threadId, decision }),
   });
 }
+
+export function uploadDocument(file) {
+  const form = new FormData();
+  form.append("file", file);
+  return fetch("/api/upload", { method: "POST", body: form })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+
+export function runTickler() {
+  return request("/demo/tickler", { method: "POST" });
+}
+
+export function resetPortfolio() {
+  return request("/demo/reset", { method: "POST" });
+}

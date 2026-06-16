@@ -115,6 +115,51 @@ def events(limit: int = 50):
         for r in rows
     ]
 
+# ── file upload ────────────────────────────────────────────────────────────
+import shutil
+from pathlib import Path
+from fastapi import UploadFile, File
+
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+@app.post("/upload")
+def upload(file: UploadFile = File(...)):
+    dest = UPLOAD_DIR / file.filename
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+    # fire an event into the outbox so the activity feed picks it up
+    from db import repository as repo
+    with repo.connect() as conn:
+        repo.add_event(conn, "document_received",
+                       payload={"filename": file.filename, "size": dest.stat().st_size})
+        conn.commit()
+    return {"filename": file.filename, "size": dest.stat().st_size}
+
+
+# ── demo control endpoints ─────────────────────────────────────────────────
+@app.post("/demo/tickler")
+def demo_tickler():
+    """Fire renewal_due events for loans maturing within 90 days."""
+    from db import repository as repo
+    with repo.connect() as conn:
+        maturing = repo.loans_maturing_within(conn, 90)
+        for loan in maturing:
+            repo.add_event(conn, "renewal_due", loan_id=loan["loan_id"],
+                           payload={"maturity_date": str(loan["maturity_date"])})
+        conn.commit()
+    return {"fired": len(maturing)}
+
+
+@app.post("/demo/reset")
+def demo_reset():
+    """Regenerate the synthetic portfolio (wipes and rebuilds loans)."""
+    import subprocess, sys
+    subprocess.run(
+        [sys.executable, "-m", "synth.generate_portfolio", "--bulk", "600"],
+        check=True
+    )
+    return {"status": "portfolio regenerated"}
 
 # ── health + metrics ──────────────────────────────────────────────────────
 @app.get("/health")
