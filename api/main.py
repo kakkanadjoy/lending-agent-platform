@@ -112,6 +112,19 @@ def queue(limit: int = 50):
     return [{"loan_id": lid, "ews_score": round(score, 4)}
             for lid, score in ranked]
 
+# ── EWS explainability (SHAP) ──────────────────────────────────────────────────
+@app.get("/loans/{loan_id}/explain")
+def explain(loan_id: str):
+    """SHAP explanation for one loan's EWS deterioration score."""
+    from db import repository as repo
+    from ews.score import explain_loan
+    with repo.connect() as conn:
+        loan = repo.get_loan(conn, loan_id)
+    if loan is None:
+        raise HTTPException(404, f"Loan {loan_id} not found")
+    return explain_loan(loan)
+
+
 # ── activity feed (recent events from the outbox) ──────────────────────────
 @app.get("/events")
 def events(limit: int = 50):

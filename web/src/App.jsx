@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { fetchQueue, fetchEvents, startRenewal, resumeRenewal,
-         uploadDocument, runTickler, resetPortfolio } from "./api.js";
+         uploadDocument, runTickler, resetPortfolio, fetchExplanation } from "./api.js";
 
 const ROLES = [
   { id: "pm",          label: "Portfolio Manager" },
@@ -152,11 +152,14 @@ function Gate({ loanId, role }) {
   const [busy,    setBusy]    = useState(false);
   const [error,   setError]   = useState(null);
   const [outcome, setOutcome] = useState(null);
+  const [explanation, setExplanation] = useState(null);
   const threadId = "desk-" + loanId;
   useEffect(() => {
-    setState(null); setOutcome(null); setError(null); setBusy(true);
+    setState(null); setOutcome(null); setError(null); setBusy(true); setExplanation(null);
     startRenewal(loanId, threadId).then(setState).catch((e) => setError(e.message)).finally(() => setBusy(false));
+    fetchExplanation(loanId).then(setExplanation).catch(() => {});
   }, [loanId]);
+
   async function decide(decision) {
     setBusy(true);
     try { setOutcome(await resumeRenewal(threadId, decision)); }
@@ -202,6 +205,25 @@ function Gate({ loanId, role }) {
           <h3>Drafted Review</h3>
           <pre className="review-text">{state.review_text}</pre>
           {flags.length > 0 && <div className="flags">Guardrails flagged this draft:<ul>{flags.map((f, i) => <li key={i}>{f}</li>)}</ul></div>}
+        </section>
+      )}
+      {explanation && explanation.contributions && (
+        <section className="shap">
+          <h3>Why this EWS score? ({explanation.score})</h3>
+          <div className="shap-bars">
+            {Object.entries(explanation.contributions).filter(([,v]) => v !== 0).map(([feat, val]) => (
+              <div key={feat} className="shap-row">
+                <span className="shap-feat">{feat.replace(/_/g, " ")}</span>
+                <div className="shap-bar-wrap">
+                  <div className={"shap-bar " + (val > 0 ? "shap-pos" : "shap-neg")}
+                    style={{ width: Math.min(100, Math.abs(val) * 60) + "%" }} />
+                </div>
+                <span className={"shap-val " + (val > 0 ? "shap-pos-text" : "shap-neg-text")}>
+                  {val > 0 ? "+" : ""}{val.toFixed(3)}
+                </span>
+              </div>
+            ))}
+          </div>
         </section>
       )}
       <section className="trail">

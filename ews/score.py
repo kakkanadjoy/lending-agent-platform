@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-from ews.features import build_features
+from ews.features import build_features, FEATURE_NAMES
 
 MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
 REGISTERED_NAME = "ews-deterioration"
@@ -82,3 +82,40 @@ def score_many(loans: list[dict]) -> list[tuple[str, float]]:
     scored = [(l["loan_id"], score_loan(l)) for l in loans]
     scored.sort(key=lambda t: t[1], reverse=True)
     return scored
+
+def explain_loan(loan: dict) -> dict:
+    """Return SHAP feature contributions for one loan."""
+    model = _model()
+    if model is None:
+        return {}
+    try:
+        import shap
+        import xgboost as xgb
+        import pandas as pd
+
+        features = build_features(loan)
+        df = pd.DataFrame([features], columns=FEATURE_NAMES)
+
+        # Use Booster's built-in SHAP prediction (no TreeExplainer needed)
+        dmatrix = xgb.DMatrix(df)
+        shap_matrix = model.predict(dmatrix, pred_contribs=True)
+
+        # pred_contribs returns [feature_shaps..., bias] — last col is bias
+        shap_vals = shap_matrix[0][:-1]
+        base_value = float(shap_matrix[0][-1])
+
+        contributions = {
+            name: round(float(val), 4)
+            for name, val in zip(FEATURE_NAMES, shap_vals)
+        }
+        contributions = dict(
+            sorted(contributions.items(),
+                   key=lambda x: abs(x[1]), reverse=True)
+        )
+        return {
+            "score": round(score_loan(loan), 4),
+            "base_value": round(base_value, 4),
+            "contributions": contributions,
+        }
+    except Exception as e:
+        return {"error": str(e)}

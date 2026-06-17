@@ -101,3 +101,7 @@ export function runTickler() {
 export function resetPortfolio() {
   return request("/demo/reset", { method: "POST" });
 }
+
+export function fetchExplanation(loanId) {
+  return request(`/loans/${loanId}/explain`);
+}
